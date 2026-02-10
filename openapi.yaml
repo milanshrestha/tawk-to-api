@@ -1,0 +1,475 @@
+openapi: 3.0.3
+info:
+  title: Tawk.to AI Assist - Hospitality API
+  version: 1.0.0
+  description: |
+    API for tawk.to AI Assist to access real-time hospitality information including room availability, bookings, guest information, amenities, and pricing.
+    
+    **Authentication:** All requests require an API key in the `X-API-Key` header.
+  contact:
+    name: API Support
+    email: support@example.com
+
+servers:
+  - url: http://localhost:3000/api/v1
+    description: Development server
+  - url: https://api.yourdomain.com/api/v1
+    description: Production server
+
+security:
+  - ApiKeyAuth: []
+
+tags:
+  - name: Rooms
+    description: Room availability and details
+  - name: Bookings
+    description: Booking management
+  - name: Guests
+    description: Guest information
+  - name: Pricing
+    description: Price calculation
+
+paths:
+  /rooms/availability:
+    get:
+      tags: [Rooms]
+      summary: Check room availability
+      description: Get available rooms for a specific date range and optional room type filter
+      operationId: getRoomAvailability
+      parameters:
+        - name: checkIn
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          description: Check-in date (YYYY-MM-DD)
+          example: "2026-03-15"
+        - name: checkOut
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          description: Check-out date (YYYY-MM-DD)
+          example: "2026-03-18"
+        - name: roomType
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [single, double, suite, deluxe]
+          description: Filter by room type
+      responses:
+        '200':
+          description: Available rooms found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  available:
+                    type: boolean
+                  count:
+                    type: integer
+                  rooms:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RoomAvailability'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /rooms/{id}:
+    get:
+      tags: [Rooms]
+      summary: Get room details
+      description: Retrieve detailed information about a specific room including amenities
+      operationId: getRoomById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Room ID
+      responses:
+        '200':
+          description: Room details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoomDetails'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /bookings:
+    post:
+      tags: [Bookings]
+      summary: Create a new booking
+      description: Create a new room booking for a guest
+      operationId: createBooking
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBookingRequest'
+      responses:
+        '201':
+          description: Booking created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: Room not available for selected dates
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /bookings/{id}:
+    get:
+      tags: [Bookings]
+      summary: Get booking details
+      description: Retrieve details of a specific booking
+      operationId: getBookingById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Booking ID
+      responses:
+        '200':
+          description: Booking details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    
+    patch:
+      tags: [Bookings]
+      summary: Update booking status
+      description: Update the status of an existing booking (confirm, cancel, etc.)
+      operationId: updateBookingStatus
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Booking ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [pending, confirmed, cancelled, completed]
+      responses:
+        '200':
+          description: Booking updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /guests/{id}:
+    get:
+      tags: [Guests]
+      summary: Get guest information
+      description: Retrieve information about a specific guest
+      operationId: getGuestById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Guest ID
+      responses:
+        '200':
+          description: Guest information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Guest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /pricing/calculate:
+    post:
+      tags: [Pricing]
+      summary: Calculate booking price
+      description: Calculate total price for a room booking based on dates, room type, and applicable discounts
+      operationId: calculatePricing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PricingRequest'
+      responses:
+        '200':
+          description: Price calculated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PricingResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API key for authentication
+
+  schemas:
+    RoomAvailability:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 101
+        roomNumber:
+          type: string
+          example: "A-101"
+        type:
+          type: string
+          enum: [single, double, suite, deluxe]
+          example: "double"
+        capacity:
+          type: integer
+          example: 2
+        pricePerNight:
+          type: number
+          format: float
+          example: 150.00
+
+    RoomDetails:
+      type: object
+      properties:
+        id:
+          type: integer
+        roomNumber:
+          type: string
+        type:
+          type: string
+          enum: [single, double, suite, deluxe]
+        capacity:
+          type: integer
+        pricePerNight:
+          type: number
+          format: float
+        description:
+          type: string
+        amenities:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              name:
+                type: string
+              description:
+                type: string
+          example:
+            - id: 1
+              name: "WiFi"
+              description: "High-speed internet"
+            - id: 2
+              name: "TV"
+              description: "Smart TV with streaming"
+
+    CreateBookingRequest:
+      type: object
+      required: [roomId, guestId, checkIn, checkOut]
+      properties:
+        roomId:
+          type: integer
+          example: 101
+        guestId:
+          type: integer
+          example: 1
+        checkIn:
+          type: string
+          format: date
+          example: "2026-03-15"
+        checkOut:
+          type: string
+          format: date
+          example: "2026-03-18"
+        specialRequests:
+          type: string
+          example: "Late check-in"
+
+    Booking:
+      type: object
+      properties:
+        id:
+          type: integer
+        roomId:
+          type: integer
+        guestId:
+          type: integer
+        checkIn:
+          type: string
+          format: date
+        checkOut:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: [pending, confirmed, cancelled, completed]
+        totalPrice:
+          type: number
+          format: float
+        specialRequests:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    Guest:
+      type: object
+      properties:
+        id:
+          type: integer
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        totalBookings:
+          type: integer
+          description: Total number of bookings made by this guest
+
+    PricingRequest:
+      type: object
+      required: [roomId, checkIn, checkOut]
+      properties:
+        roomId:
+          type: integer
+          example: 101
+        checkIn:
+          type: string
+          format: date
+          example: "2026-03-15"
+        checkOut:
+          type: string
+          format: date
+          example: "2026-03-18"
+        discountCode:
+          type: string
+          example: "SUMMER2026"
+
+    PricingResponse:
+      type: object
+      properties:
+        roomId:
+          type: integer
+        nights:
+          type: integer
+        basePrice:
+          type: number
+          format: float
+        discount:
+          type: number
+          format: float
+        tax:
+          type: number
+          format: float
+        totalPrice:
+          type: number
+          format: float
+        breakdown:
+          type: object
+          properties:
+            pricePerNight:
+              type: number
+            subtotal:
+              type: number
+            discountAmount:
+              type: number
+            taxAmount:
+              type: number
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        statusCode:
+          type: integer
+
+  responses:
+    BadRequest:
+      description: Invalid request parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Bad Request"
+            message: "Invalid date format"
+            statusCode: 400
+
+    Unauthorized:
+      description: Missing or invalid API key
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Unauthorized"
+            message: "Invalid API key"
+            statusCode: 401
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Not Found"
+            message: "Resource not found"
+            statusCode: 404
