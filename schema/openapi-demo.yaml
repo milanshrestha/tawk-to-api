@@ -1,1 +1,278 @@
 
+openapi: 3.0.3
+info:
+  title: Shanker Hotel Booking API
+  version: 1.0.0
+  description: |
+    Real-time hotel room availability and pricing API for Shanker Hotel.
+    Provides live data including room availability, pricing, rate plans, amenities, and cancellation policies.
+    
+    **Authentication:** All API requests (except /health) require an API key in the `X-API-Key` header.
+
+servers:
+  - url: http://localhost:3000
+    description: Development server
+  - url: https://your-production-domain.com
+    description: Production server
+
+security:
+  - ApiKeyAuth: []
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      description: Check if the API server is running
+      operationId: healthCheck
+      security: []  # No authentication required
+      responses:
+        '200':
+          description: Server is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ok"
+
+  /api/search:
+    post:
+      summary: Search room availability and pricing
+      description: |
+        Search for available rooms at Shanker Hotel with real-time pricing.
+        Returns room details, rate plans, pricing, amenities, and cancellation policies.
+        Optionally filter by room name to get specific room types.
+      operationId: searchRooms
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - checkIn
+                - checkOut
+                - adults
+                - children
+              properties:
+                checkIn:
+                  type: string
+                  format: date
+                  description: Check-in date (YYYY-MM-DD)
+                  example: "2026-03-24"
+                checkOut:
+                  type: string
+                  format: date
+                  description: Check-out date (YYYY-MM-DD)
+                  example: "2026-03-25"
+                rooms:
+                  type: integer
+                  description: Number of rooms (default 1)
+                  example: 1
+                  default: 1
+                adults:
+                  type: integer
+                  description: Number of adults
+                  example: 2
+                children:
+                  type: integer
+                  description: Number of children
+                  example: 0
+                roomName:
+                  type: string
+                  description: |
+                    Optional filter to search for specific room type.
+                    Use partial names like: "family", "suite", "deluxe", "single", "double", "twin"
+                  example: "family"
+      responses:
+        '200':
+          description: Search results with available rooms
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/AllRoomsResponse'
+                  - $ref: '#/components/schemas/SingleRoomResponse'
+              examples:
+                allRooms:
+                  summary: All available rooms
+                  value:
+                    success: true
+                    checkIn: "2026-03-24"
+                    checkOut: "2026-03-25"
+                    rooms:
+                      - name: "Heritage Family Room with Free Two Way Airport Transfers"
+                        availability: 6
+                        ratePlans:
+                          - name: "Room with Breakfast"
+                            type: "Regular"
+                            originalPrice: 215
+                            discountedPrice: 161.25
+                            savings: 53.75
+                            discountPercentage: 25
+                            currency: "USD"
+                            inclusions:
+                              - "Free Wi-Fi"
+                              - "Breakfast Included for 1 Guests"
+                            cancellationPolicy: "Non-refundable"
+                singleRoom:
+                  summary: Specific room filtered by name
+                  value:
+                    success: true
+                    room:
+                      name: "Deluxe Twin Room with Free One Way Airport Transfer"
+                      availability: 12
+                      ratePlans:
+                        - name: "Room with Breakfast"
+                          type: "Regular"
+                          description: "Kick start your day with the perfect meal"
+                          originalPrice: 150
+                          discountedPrice: 105
+                          savings: 45
+                          currency: "USD"
+                          inclusions:
+                            - "Free Wi-Fi"
+                            - "Breakfast Included for 1 Guests"
+                          cancellationPolicy: "Free cancellation up to 3 days before arrival"
+        '401':
+          description: Unauthorized - Invalid or missing API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error: "Unauthorized - Invalid or missing API key"
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API key for authentication. Required for all endpoints except /health.
+
+  schemas:
+    AllRoomsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        checkIn:
+          type: string
+          format: date
+        checkOut:
+          type: string
+          format: date
+        rooms:
+          type: array
+          items:
+            $ref: '#/components/schemas/Room'
+
+    SingleRoomResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        room:
+          $ref: '#/components/schemas/Room'
+
+    Room:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Full room name
+          example: "Heritage Family Room with Free Two Way Airport Transfers"
+        availability:
+          type: integer
+          description: Number of rooms available
+          example: 6
+        ratePlans:
+          type: array
+          items:
+            $ref: '#/components/schemas/RatePlan'
+
+    RatePlan:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Rate plan name
+          example: "Room with Breakfast"
+        type:
+          type: string
+          enum: [Regular, Member-only]
+          description: Type of rate plan
+          example: "Regular"
+        description:
+          type: string
+          description: Rate plan description
+          example: "Kick start your day with the perfect meal with our room with breakfast plan."
+        discountInfo:
+          type: string
+          description: Discount information (for member-only rates)
+          example: "Members only (CP and MAP)LAST MIN + LMD: 25%"
+        originalPrice:
+          type: number
+          format: float
+          description: Original price before discount
+          example: 215
+        discountedPrice:
+          type: number
+          format: float
+          description: Price after discount
+          example: 161.25
+        savings:
+          type: number
+          format: float
+          description: Amount saved
+          example: 53.75
+        discountPercentage:
+          type: integer
+          description: Discount percentage
+          example: 25
+        currency:
+          type: string
+          description: Currency code
+          example: "USD"
+        inclusions:
+          type: array
+          items:
+            type: string
+          description: List of included amenities and services
+          example:
+            - "Free Wi-Fi"
+            - "Breakfast Included for 1 Guests"
+            - "Early Check-In & Late Check-Out Allowed"
+        cancellationPolicy:
+          type: string
+          description: Cancellation policy details
+          example: "Free cancellation up to 3 days before arrival"
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+          description: Error message
+          example: "Invalid date format"
