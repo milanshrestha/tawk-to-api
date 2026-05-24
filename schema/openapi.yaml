@@ -4,6 +4,7 @@ info:
   title: Tawk.to Simplotel Middleware API
   description: >
     Middleware Orchestrator API for integrating Tawk.to AI Assist with Simplotel Booking Engine.
+    Provides session tracking, price calculations, and tax mapping.
   license:
     name: MIT
 servers:
@@ -60,6 +61,7 @@ paths:
                 - checkOut
                 - rooms
                 - propertyId
+                - sessionId
               properties:
                 checkIn:
                   type: string
@@ -81,8 +83,8 @@ paths:
                   example: "SAVE10"
                 sessionId:
                   type: string
-                  description: Optional session ID to correlate booking flow
-                  example: "sess_123456"
+                  description: REQUIRED. The unique conversation ID or chat ID. Must be passed consistently across all API calls to maintain booking state.
+                  example: "chat_78910"
                 rooms:
                   type: array
                   items:
@@ -168,6 +170,7 @@ paths:
                 - holdInventory
                 - quoteInfo
                 - lineItems
+                - sessionId
               properties:
                 checkIn:
                   type: string
@@ -185,7 +188,8 @@ paths:
                   example: 0
                 sessionId:
                   type: string
-                  example: "sess_123456"
+                  description: REQUIRED. The unique conversation ID or chat ID. Must be passed consistently across all API calls to maintain booking state.
+                  example: "chat_78910"
                 holdInventory:
                   type: object
                   required:
@@ -294,6 +298,7 @@ paths:
                 - holdInventory
                 - quoteInfo
                 - lineItems
+                - sessionId
               properties:
                 checkIn:
                   type: string
@@ -314,7 +319,8 @@ paths:
                   example: 100
                 sessionId:
                   type: string
-                  example: "sess_123456"
+                  description: REQUIRED. The unique conversation ID or chat ID. Must be passed consistently across all API calls to maintain booking state.
+                  example: "chat_78910"
                 holdInventory:
                   type: object
                   properties:
@@ -378,6 +384,7 @@ paths:
                 - room_selection
                 - customer_detail
                 - propertyId
+                - sessionId
               properties:
                 check_in_date:
                   type: string
@@ -392,7 +399,8 @@ paths:
                   example: 11184
                 sessionId:
                   type: string
-                  example: "sess_123456"
+                  description: REQUIRED. The unique conversation ID or chat ID. Must be passed consistently across all API calls to maintain booking state.
+                  example: "chat_78910"
                 customer_detail:
                   type: object
                   required:
