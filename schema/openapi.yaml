@@ -146,21 +146,31 @@ paths:
                   options:
                     type: array
                     description: >
-                      Flat list of available room + rate plan combinations.
-                      ALWAYS present these to the guest using the option_number as a
-                      prefix, exactly like this format for each option:
+                      Flat sequential list of all available room + rate plan combinations.
+                      The option_number is a globally unique sequential integer (1, 2, 3, 4, 5...).
+                      Do NOT group options by room type. Do NOT restart numbering per room.
 
-                      "Option [option_number]: [room_name] — [rate_plan_name]
-                      Price: ₹[price_per_night_incl_taxes]/night (incl. taxes)
-                      Total for [rooms_required] room(s): ₹[grand_total_all_rooms_incl_taxes]
-                      Cancellation: [cancellation_policy]"
+                      ALWAYS present every option using this EXACT format, using the
+                      option_number as-is from the response:
 
-                      After listing all options, ask the guest: "Which option would you
-                      like? Please reply with the option number (e.g. Option 1)."
+                      "Option 1: Coral Azure (Garden Facing) — Room Only
+                      ₹16,518/night incl. taxes | Total: ₹16,518
+                      Cancellation: Free cancellation up to 48 hours prior to check-in.
 
-                      When the guest replies with an option number, use the room_type_id
-                      and rate_plan_id from that option in the lineItems of /book or
-                      /send-invoice. Never use the option_number itself as an ID.
+                      Option 2: Coral Azure (Garden Facing) — Room with Breakfast
+                      ₹34,337/night incl. taxes | Total: ₹34,337
+                      Cancellation: Full amount charged on cancellation.
+
+                      Option 3: Coral Turquoise (Pool Facing) — Room Only
+                      ..."
+
+                      Always use ₹ (Indian Rupee) for prices, never $ or USD.
+                      After listing all options ask: "Which option would you like?
+                      Please reply with the option number."
+
+                      When the guest replies with a number, look up that option_number
+                      in this list and use its room_type_id and rate_plan_id in
+                      lineItems when calling /book or /send-invoice.
                     items:
                       type: object
                       properties:
