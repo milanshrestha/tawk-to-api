@@ -139,6 +139,12 @@ paths:
                     type: string
                     description: Session ID to reuse in all subsequent calls.
                     example: "chat_abc123"
+                  currency:
+                    type: string
+                    description: >
+                      Currency symbol for all prices in this response.
+                      Always use this symbol when displaying prices to the guest.
+                    example: "₹"
                   rooms_required:
                     type: integer
                     description: Number of rooms needed for the requested occupancy.
@@ -164,7 +170,8 @@ paths:
                       Option 3: Coral Turquoise (Pool Facing) — Room Only
                       ..."
 
-                      Always use ₹ (Indian Rupee) for prices, never $ or USD.
+                      Always use the currency symbol from the `currency` field in this
+                      response when displaying prices. Never assume $ or any other symbol.
                       After listing all options ask: "Which option would you like?
                       Please reply with the option number."
 
