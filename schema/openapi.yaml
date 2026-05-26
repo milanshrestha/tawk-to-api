@@ -414,11 +414,11 @@ paths:
                           to resolve the correct room — more reliable than room_type_id.
                         example: 4
                       room_type_id:
-                        description: Exact room_type_id from the chosen /availability option.
+                        description: The room_type_id value from the chosen option in /availability. Must be the exact value returned — do not use a placeholder.
                         example: 118524
                       rate_plan_id:
                         type: string
-                        description: Exact rate_plan_id from the chosen /availability option.
+                        description: The rate_plan_id value from the chosen option in /availability. Must be the exact value returned — do not use a placeholder.
                         example: "117575"
                       adults:
                         type: integer
@@ -581,11 +581,11 @@ paths:
                           to resolve the correct room — more reliable than room_type_id.
                         example: 4
                       room_type_id:
-                        description: Exact room_type_id from the chosen /availability option.
+                        description: The room_type_id value from the chosen option in /availability. Must be the exact value returned — do not use a placeholder.
                         example: 118524
                       rate_plan_id:
                         type: string
-                        description: Exact rate_plan_id from the chosen /availability option.
+                        description: The rate_plan_id value from the chosen option in /availability. Must be the exact value returned — do not use a placeholder.
                         example: "117575"
                       adults:
                         type: integer
@@ -701,11 +701,11 @@ paths:
                           to resolve the correct room — more reliable than room_type_id.
                         example: 4
                       room_type_id:
-                        description: Exact room_type_id from the chosen /availability option.
+                        description: The room_type_id value from the chosen option in /availability. Must be the exact value returned — do not use a placeholder.
                         example: 118524
                       rate_plan_id:
                         type: string
-                        description: Exact rate_plan_id from the chosen /availability option.
+                        description: The rate_plan_id value from the chosen option in /availability. Must be the exact value returned — do not use a placeholder.
                         example: "117575"
                       adults:
                         type: integer
