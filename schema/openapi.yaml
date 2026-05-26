@@ -408,6 +408,13 @@ paths:
                       - adults
                       - children
                     properties:
+                      option_number:
+                        type: integer
+                        description: >
+                          PREFERRED. The option_number the guest selected from the
+                          /availability response. If provided, the server uses this
+                          to resolve the correct room — more reliable than room_type_id.
+                        example: 4
                       room_type_id:
                         description: Exact room_type_id from the chosen /availability option.
                         example: 118524
@@ -575,6 +582,13 @@ paths:
                       - adults
                       - children
                     properties:
+                      option_number:
+                        type: integer
+                        description: >
+                          PREFERRED. The option_number the guest selected from the
+                          /availability response. If provided, the server uses this
+                          to resolve the correct room — more reliable than room_type_id.
+                        example: 4
                       room_type_id:
                         description: Exact room_type_id from the chosen /availability option.
                         example: 118524
@@ -688,6 +702,13 @@ paths:
                       - adults
                       - children
                     properties:
+                      option_number:
+                        type: integer
+                        description: >
+                          PREFERRED. The option_number the guest selected from the
+                          /availability response. If provided, the server uses this
+                          to resolve the correct room — more reliable than room_type_id.
+                        example: 4
                       room_type_id:
                         description: Exact room_type_id from the chosen /availability option.
                         example: 118524
