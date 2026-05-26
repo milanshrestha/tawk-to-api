@@ -147,15 +147,30 @@ paths:
                     type: array
                     description: >
                       Flat list of available room + rate plan combinations.
-                      Present these to the guest as numbered choices.
-                      When the guest selects one, use its room_type_id and rate_plan_id
-                      in the lineItems of /book or /send-invoice.
+                      ALWAYS present these to the guest using the option_number as a
+                      prefix, exactly like this format for each option:
+
+                      "Option [option_number]: [room_name] — [rate_plan_name]
+                      Price: ₹[price_per_night_incl_taxes]/night (incl. taxes)
+                      Total for [rooms_required] room(s): ₹[grand_total_all_rooms_incl_taxes]
+                      Cancellation: [cancellation_policy]"
+
+                      After listing all options, ask the guest: "Which option would you
+                      like? Please reply with the option number (e.g. Option 1)."
+
+                      When the guest replies with an option number, use the room_type_id
+                      and rate_plan_id from that option in the lineItems of /book or
+                      /send-invoice. Never use the option_number itself as an ID.
                     items:
                       type: object
                       properties:
                         option_number:
                           type: integer
-                          description: Display number for presenting to the guest (1, 2, 3...).
+                          description: >
+                            Display number for presenting to the guest (1, 2, 3...).
+                            Use this as the label when listing options to the guest.
+                            Do NOT pass this value to /book or /send-invoice — use
+                            room_type_id and rate_plan_id instead.
                           example: 1
                         room_name:
                           type: string
