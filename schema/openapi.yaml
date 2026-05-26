@@ -228,6 +228,36 @@ paths:
                           type: integer
                           description: Number of rooms of this type currently available.
                           example: 5
+                        refundable:
+                          type: boolean
+                          description: >
+                            Whether this rate plan allows free cancellation.
+                            Use this to determine which payment options to offer the guest.
+                            true = refundable, false = non-refundable.
+                          example: true
+                        payment_options:
+                          type: array
+                          description: >
+                            Allowed payment flows for this rate plan.
+                            ALWAYS use this list to decide what to offer the guest — never offer
+                            a payment option that is not in this array.
+
+                            Possible values:
+                            - "instant_book": Call /book (confirmed immediately, pay at hotel)
+                            - "payment_link": Call /send-invoice with advanceAmount = grand_total_all_rooms_incl_taxes
+                            - "pay_at_hotel": Call /send-invoice with advanceAmount = 0
+                            - "send_quote": Call /send-quote (guest decides later)
+
+                            Non-refundable rates will only have ["instant_book", "payment_link"].
+                            Refundable rates will have all four options.
+
+                            When asking the guest how they want to pay, only present the options
+                            listed here. For non-refundable rates, explain that pay-at-hotel is
+                            not available because the rate requires payment commitment.
+                          items:
+                            type: string
+                            enum: [instant_book, payment_link, pay_at_hotel, send_quote]
+                          example: ["instant_book", "payment_link", "pay_at_hotel", "send_quote"]
                         cancellation_policy:
                           type: string
                           example: "Free cancellation up to 48 hours prior to check-in."
@@ -467,8 +497,17 @@ paths:
                 advanceAmount:
                   type: number
                   description: >
-                    Amount to collect upfront. Set to 0 for Pay at Hotel.
-                    Set to the grand_total_all_rooms_incl_taxes for full payment.
+                    Controls how much to collect upfront and which email Simplotel sends.
+
+                    - Set to 0 for "Pay at Hotel": Simplotel sends a confirmation email,
+                      no payment collected. Only valid for refundable rate plans
+                      (payment_options includes "pay_at_hotel").
+                    - Set to grand_total_all_rooms_incl_taxes for full payment upfront:
+                      Simplotel sends a payment link email. Valid for all rate plans.
+                    - Set to a partial amount for a deposit (e.g. 30% of grand total).
+
+                    IMPORTANT: Never use advanceAmount = 0 for non-refundable rate plans.
+                    Check the payment_options array from /availability before deciding.
                   example: 75510.56
                 holdInventory:
                   type: object
