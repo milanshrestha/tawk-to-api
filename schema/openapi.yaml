@@ -238,26 +238,25 @@ paths:
                         payment_options:
                           type: array
                           description: >
-                            Allowed payment flows for this rate plan.
-                            ALWAYS use this list to decide what to offer the guest — never offer
-                            a payment option that is not in this array.
+                            Allowed payment flows for this rate plan per operational policy.
 
                             Possible values:
-                            - "instant_book": Call /book (confirmed immediately, pay at hotel)
-                            - "payment_link": Call /send-invoice with advanceAmount = grand_total_all_rooms_incl_taxes
-                            - "pay_at_hotel": Call /send-invoice with advanceAmount = 0
-                            - "send_quote": Call /send-quote (guest decides later)
+                            - "payment_link": Call /send-invoice with advanceAmount = grand_total_all_rooms_incl_taxes.
+                              Room is held for 24 hours. Simplotel emails the guest a secure payment link.
+                              This is the preferred default for all bookings.
+                            - "send_quote": Call /send-quote.
+                              Simplotel emails the guest a quote with a Book Now link to confirm later.
+                              Only available for refundable rate plans.
 
-                            Non-refundable rates will only have ["instant_book", "payment_link"].
-                            Refundable rates will have all four options.
+                            Non-refundable rates return ["payment_link"] only — full payment required upfront.
+                            Refundable rates return ["payment_link", "send_quote"].
 
-                            When asking the guest how they want to pay, only present the options
-                            listed here. For non-refundable rates, explain that pay-at-hotel is
-                            not available because the rate requires payment commitment.
+                            When the guest is ready to pay → use payment_link.
+                            When the guest is undecided → use send_quote.
                           items:
                             type: string
-                            enum: [instant_book, payment_link, pay_at_hotel, send_quote]
-                          example: ["instant_book", "payment_link", "pay_at_hotel", "send_quote"]
+                            enum: [payment_link, send_quote]
+                          example: ["payment_link", "send_quote"]
                         cancellation_policy:
                           type: string
                           example: "Free cancellation up to 48 hours prior to check-in."
@@ -291,13 +290,12 @@ paths:
 
   /book:
     post:
-      summary: Confirm Booking (Instant)
+      summary: Confirm Booking (Internal Use)
       description: >
-        Create an instant confirmed booking. Simplotel will send a confirmation email
-        to the guest automatically. Tell the guest to check their email after success.
-
-        IMPORTANT: lineItems must use room_type_id and rate_plan_id exactly as returned
-        by /availability. Do not use option_number or room names as identifiers here.
+        Creates an instant confirmed booking with no payment collected upfront.
+        NOTE: Per operational policy, prefer /send-invoice over /book.
+        Use /send-invoice with advanceAmount > 0 to collect payment securely.
+        This endpoint is retained for edge cases only.
       operationId: createBooking
       requestBody:
         required: true
@@ -504,17 +502,10 @@ paths:
                 advanceAmount:
                   type: number
                   description: >
-                    Controls how much to collect upfront and which email Simplotel sends.
-
-                    - Set to 0 for "Pay at Hotel": Simplotel sends a confirmation email,
-                      no payment collected. Only valid for refundable rate plans
-                      (payment_options includes "pay_at_hotel").
-                    - Set to grand_total_all_rooms_incl_taxes for full payment upfront:
-                      Simplotel sends a payment link email. Valid for all rate plans.
-                    - Set to a partial amount for a deposit (e.g. 30% of grand total).
-
-                    IMPORTANT: Never use advanceAmount = 0 for non-refundable rate plans.
-                    Check the payment_options array from /availability before deciding.
+                    Amount to collect upfront.
+                    For Pay Now (preferred): set to grand_total_all_rooms_incl_taxes.
+                    Room is held for 24 hours. Simplotel emails a secure payment link.
+                    Never set to 0 for non-refundable rates.
                   example: 75510.56
                 holdInventory:
                   type: object
