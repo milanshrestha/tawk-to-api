@@ -1,28 +1,34 @@
 openapi: "3.0.0"
 info:
-  version: 1.0.0
+  version: 2.0.0
   title: Tawk.to Simplotel Middleware API
   description: >
-    Middleware Orchestrator API for integrating Tawk.to AI Assist with Simplotel Booking Engine.
-    Provides session tracking, price calculations, and tax mapping.
-  license:
-    name: MIT
+    Middleware API for integrating Tawk.to AI Assist with the Simplotel Booking Engine.
+
+    IMPORTANT RULES FOR THE AI AGENT:
+    - Always pass sessionId consistently across ALL calls in the same conversation.
+    - Use the sessionId from the first API response and reuse it in every subsequent call.
+    - When presenting room options to the guest, always use the option_number from the /availability response.
+    - When calling /book or /send-invoice, pass room_type_id and rate_plan_id exactly as returned by /availability — never invent or guess these values.
+    - propertyId is always 11184. Never ask the guest for it.
+    - Collect guest name, email, and phone before calling /book or /send-invoice.
+    - After a successful booking or invoice, tell the guest to check their email for confirmation and payment details.
+
 servers:
   - url: http://localhost:3000/api
-    description: Local development middleware server
-  - url: https://your-middleware-domain.com/api
-    description: Production middleware server
+    description: Local development server
 security:
   - ApiKeyAuth: []
+
 paths:
   /health:
     get:
-      summary: Health check
-      description: Check the status of the middleware and Simplotel Booking Engine connection.
+      summary: Health Check
+      description: Verify the middleware and Simplotel connection are working.
       operationId: getHealth
       responses:
         "200":
-          description: Connection successful
+          description: Service is healthy
           content:
             application/json:
               schema:
@@ -41,15 +47,13 @@ paths:
   /availability:
     post:
       summary: Check Room Availability
-      description: Retrieve live room inventory, rate plans, and independent addons for selected dates.
+      description: >
+        Retrieve available rooms and rate plans for the requested dates and occupancy.
+        Returns a flat `options[]` array. Each option has an `option_number`, a `room_type_id`,
+        and a `rate_plan_id`. When the guest selects a room, pass the `room_type_id` and
+        `rate_plan_id` from the chosen option into the lineItems of /book or /send-invoice.
+        Do NOT use option_number as a room identifier in booking calls.
       operationId: checkAvailability
-      parameters:
-        - in: header
-          name: X-Session-ID
-          schema:
-            type: string
-          required: false
-          description: Session identifier to track booking progress.
       requestBody:
         required: true
         content:
@@ -60,33 +64,36 @@ paths:
                 - checkIn
                 - checkOut
                 - rooms
-                - propertyId
                 - sessionId
               properties:
+                sessionId:
+                  type: string
+                  description: >
+                    REQUIRED. The unique conversation/chat ID. Must be the same value
+                    across all API calls in this conversation to maintain booking state.
+                  example: "chat_abc123"
                 checkIn:
                   type: string
                   format: date
-                  description: Check-in date (YYYY-MM-DD)
-                  example: "2026-05-25"
+                  description: Check-in date in YYYY-MM-DD format.
+                  example: "2026-06-01"
                 checkOut:
                   type: string
                   format: date
-                  description: Check-out date (YYYY-MM-DD)
-                  example: "2026-05-28"
+                  description: Check-out date in YYYY-MM-DD format.
+                  example: "2026-06-05"
                 propertyId:
                   type: integer
-                  description: Simplotel Hotel ID
+                  description: Simplotel Hotel ID. Always use 11184. Never ask the guest.
+                  default: 11184
                   example: 11184
                 promocode:
                   type: string
-                  description: Optional promo code to filter and apply discount
+                  description: Optional promo/discount code entered by the guest.
                   example: "SAVE10"
-                sessionId:
-                  type: string
-                  description: REQUIRED. The unique conversation ID or chat ID. Must be passed consistently across all API calls to maintain booking state.
-                  example: "chat_78910"
                 rooms:
                   type: array
+                  description: One entry per room being booked with occupancy details.
                   items:
                     type: object
                     required:
@@ -96,65 +103,139 @@ paths:
                     properties:
                       id:
                         type: integer
-                        description: Room number/index (1, 2, 3...)
+                        description: Room index starting from 1.
                         example: 1
                       adults:
                         type: integer
                         minimum: 1
                         maximum: 4
+                        description: Number of adults in this room.
                         example: 2
                       children:
                         type: integer
                         minimum: 0
                         maximum: 4
+                        description: Number of children in this room.
                         example: 1
                       childAge:
                         type: array
-                        description: Array of child ages (0-17). Required if children > 0
+                        description: >
+                          Age of each child (0–17). Required when children > 0.
+                          Array length must equal the children count.
                         items:
                           type: integer
+                          minimum: 0
+                          maximum: 17
                         example: [7]
       responses:
         "200":
-          description: Availability response
+          description: Available room options
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  rooms:
+                  sessionId:
+                    type: string
+                    description: Session ID to reuse in all subsequent calls.
+                    example: "chat_abc123"
+                  rooms_required:
+                    type: integer
+                    description: Number of rooms needed for the requested occupancy.
+                    example: 2
+                  options:
                     type: array
+                    description: >
+                      Flat list of available room + rate plan combinations.
+                      Present these to the guest as numbered choices.
+                      When the guest selects one, use its room_type_id and rate_plan_id
+                      in the lineItems of /book or /send-invoice.
                     items:
                       type: object
                       properties:
-                        room_type:
+                        option_number:
                           type: integer
-                          example: 96056
-                        name:
+                          description: Display number for presenting to the guest (1, 2, 3...).
+                          example: 1
+                        room_name:
                           type: string
-                          example: Standard Rooms
+                          description: Human-readable room type name.
+                          example: "Coral Azure (Garden Facing)"
+                        rate_plan_name:
+                          type: string
+                          description: Human-readable rate plan name.
+                          example: "Room with Breakfast"
+                        room_type_id:
+                          description: >
+                            Real Simplotel room type ID. MUST be passed as-is in
+                            lineItems.room_type_id when booking.
+                          example: 118524
+                        rate_plan_id:
+                          type: string
+                          description: >
+                            Real Simplotel rate plan ID. MUST be passed as-is in
+                            lineItems.rate_plan_id when booking.
+                          example: "117575"
+                        price_per_night_incl_taxes:
+                          type: number
+                          description: Average price per night including all taxes and fees.
+                          example: 18878
+                        grand_total_per_room_incl_taxes:
+                          type: number
+                          description: Total price for one room for the full stay including taxes.
+                          example: 75510.56
+                        rooms_required:
+                          type: integer
+                          description: Number of rooms needed.
+                          example: 2
+                        grand_total_all_rooms_incl_taxes:
+                          type: number
+                          description: Grand total for all rooms combined including taxes.
+                          example: 151021.12
                         availability:
                           type: integer
-                          example: 20
-                        rate_plans:
+                          description: Number of rooms of this type currently available.
+                          example: 5
+                        cancellation_policy:
+                          type: string
+                          example: "Free cancellation up to 48 hours prior to check-in."
+                        inclusions:
                           type: array
                           items:
-                            type: object
-                  total_room_availability:
-                    type: integer
-                    example: 20
+                            type: string
+                          example: ["Buffet Breakfast", "Wi-Fi"]
                   independent_addons:
                     type: array
+                    description: Optional add-ons available for this property (breakfast, airport transfer, etc.).
                     items:
                       type: object
-                  sessionId:
-                    type: string
-                    example: "sess_123456"
+                      properties:
+                        id:
+                          type: string
+                          example: "42"
+                        name:
+                          type: string
+                          example: "Airport Pickup"
+                        price:
+                          type: number
+                          example: 1500
+                        type:
+                          type: string
+                          enum: [per-night, one-time]
+                          example: "one-time"
+                        description:
+                          type: string
+                          example: "One-way private airport transfer."
 
   /book:
     post:
-      summary: Confirm Booking
-      description: Create a confirmed booking immediately on the Simplotel engine.
+      summary: Confirm Booking (Instant)
+      description: >
+        Create an instant confirmed booking. Simplotel will send a confirmation email
+        to the guest automatically. Tell the guest to check their email after success.
+
+        IMPORTANT: lineItems must use room_type_id and rate_plan_id exactly as returned
+        by /availability. Do not use option_number or room names as identifiers here.
       operationId: createBooking
       requestBody:
         required: true
@@ -163,49 +244,47 @@ paths:
             schema:
               type: object
               required:
+                - sessionId
                 - checkIn
                 - checkOut
                 - propertyId
-                - advanceAmount
-                - holdInventory
                 - quoteInfo
                 - lineItems
-                - sessionId
               properties:
+                sessionId:
+                  type: string
+                  description: REQUIRED. Same session ID used in /availability.
+                  example: "chat_abc123"
                 checkIn:
                   type: string
                   format: date
-                  example: "2026-05-25"
+                  example: "2026-06-01"
                 checkOut:
                   type: string
                   format: date
-                  example: "2026-05-28"
+                  example: "2026-06-05"
                 propertyId:
                   type: integer
+                  description: Always 11184.
+                  default: 11184
                   example: 11184
                 advanceAmount:
                   type: number
+                  description: Advance payment amount. Use 0 for pay-at-hotel.
+                  default: 0
                   example: 0
-                sessionId:
-                  type: string
-                  description: REQUIRED. The unique conversation ID or chat ID. Must be passed consistently across all API calls to maintain booking state.
-                  example: "chat_78910"
                 holdInventory:
                   type: object
-                  required:
-                    - enabled
-                    - value
-                    - unit
                   properties:
                     enabled:
                       type: boolean
-                      example: true
+                      default: true
                     value:
                       type: integer
-                      example: 24
+                      default: 24
                     unit:
                       type: string
-                      example: "HOURS"
+                      default: "HOURS"
                 quoteInfo:
                   type: object
                   required:
@@ -216,11 +295,174 @@ paths:
                     checkInDate:
                       type: string
                       format: date
-                      example: "2026-05-25"
+                      example: "2026-06-01"
                     checkOutDate:
                       type: string
                       format: date
-                      example: "2026-05-28"
+                      example: "2026-06-05"
+                    customerDetail:
+                      type: object
+                      required:
+                        - name
+                        - email
+                        - phone
+                      properties:
+                        name:
+                          type: string
+                          example: "John Doe"
+                        email:
+                          type: string
+                          format: email
+                          example: "john@example.com"
+                        phone:
+                          type: string
+                          description: International format required.
+                          example: "+919876543210"
+                        bookingForSelf:
+                          type: boolean
+                          default: true
+                    city:
+                      type: string
+                      example: "Mumbai"
+                    state:
+                      type: string
+                      example: "Maharashtra"
+                    country:
+                      type: string
+                      example: "India"
+                    gstNumber:
+                      type: string
+                      example: ""
+                lineItems:
+                  type: array
+                  description: >
+                    One entry per room. Use room_type_id and rate_plan_id exactly
+                    as returned by /availability for the option the guest selected.
+                  items:
+                    type: object
+                    required:
+                      - room_type_id
+                      - rate_plan_id
+                      - adults
+                      - children
+                    properties:
+                      room_type_id:
+                        description: Exact room_type_id from the chosen /availability option.
+                        example: 118524
+                      rate_plan_id:
+                        type: string
+                        description: Exact rate_plan_id from the chosen /availability option.
+                        example: "117575"
+                      adults:
+                        type: integer
+                        example: 2
+                      children:
+                        type: integer
+                        example: 0
+                      childAge:
+                        type: array
+                        items:
+                          type: integer
+                        example: []
+                independent_addons:
+                  type: array
+                  description: Selected add-ons from the independent_addons list in /availability.
+                  items:
+                    type: object
+      responses:
+        "200":
+          description: Booking confirmed. Guest will receive confirmation email from Simplotel.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  booking_id:
+                    type: string
+                    description: Simplotel booking reference ID.
+                    example: "KMDXCM"
+                  quote_id:
+                    type: string
+                    example: "QMHIFV"
+                  sessionId:
+                    type: string
+                    example: "chat_abc123"
+
+  /send-invoice:
+    post:
+      summary: Send Invoice & Payment Link
+      description: >
+        Create a booking and send a payment invoice to the guest's email.
+        Simplotel emails the guest a secure payment link and reservation details.
+        Tell the guest to check their email to complete payment.
+
+        Use advanceAmount = 0 for "Pay at Hotel" (no upfront payment required).
+        Use advanceAmount > 0 to request a deposit or full payment upfront.
+
+        IMPORTANT: lineItems must use room_type_id and rate_plan_id exactly as returned
+        by /availability.
+      operationId: sendInvoice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - sessionId
+                - checkIn
+                - checkOut
+                - propertyId
+                - quoteInfo
+                - lineItems
+              properties:
+                sessionId:
+                  type: string
+                  description: REQUIRED. Same session ID used in /availability.
+                  example: "chat_abc123"
+                checkIn:
+                  type: string
+                  format: date
+                  example: "2026-06-01"
+                checkOut:
+                  type: string
+                  format: date
+                  example: "2026-06-05"
+                propertyId:
+                  type: integer
+                  default: 11184
+                  example: 11184
+                advanceAmount:
+                  type: number
+                  description: >
+                    Amount to collect upfront. Set to 0 for Pay at Hotel.
+                    Set to the grand_total_all_rooms_incl_taxes for full payment.
+                  example: 75510.56
+                holdInventory:
+                  type: object
+                  properties:
+                    enabled:
+                      type: boolean
+                      default: true
+                    value:
+                      type: integer
+                      default: 24
+                    unit:
+                      type: string
+                      default: "HOURS"
+                quoteInfo:
+                  type: object
+                  required:
+                    - checkInDate
+                    - checkOutDate
+                    - customerDetail
+                  properties:
+                    checkInDate:
+                      type: string
+                      format: date
+                    checkOutDate:
+                      type: string
+                      format: date
                     customerDetail:
                       type: object
                       required:
@@ -243,109 +485,50 @@ paths:
                           default: true
                     city:
                       type: string
-                      example: "Mumbai"
                     state:
                       type: string
-                      example: "Maharashtra"
                     country:
                       type: string
-                      example: "India"
                     gstNumber:
                       type: string
-                      example: ""
                 lineItems:
                   type: array
+                  description: >
+                    One entry per room. Use room_type_id and rate_plan_id exactly
+                    as returned by /availability for the option the guest selected.
                   items:
                     type: object
+                    required:
+                      - room_type_id
+                      - rate_plan_id
+                      - adults
+                      - children
+                    properties:
+                      room_type_id:
+                        description: Exact room_type_id from the chosen /availability option.
+                        example: 118524
+                      rate_plan_id:
+                        type: string
+                        description: Exact rate_plan_id from the chosen /availability option.
+                        example: "117575"
+                      adults:
+                        type: integer
+                        example: 2
+                      children:
+                        type: integer
+                        example: 0
+                      childAge:
+                        type: array
+                        items:
+                          type: integer
+                        example: []
                 independent_addons:
                   type: array
                   items:
                     type: object
       responses:
         "200":
-          description: Booking confirmation details
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  booking_id:
-                    type: string
-                    example: "KMDXCM"
-                  quote_id:
-                    type: string
-                    example: "QMHIFV"
-                  sessionId:
-                    type: string
-                    example: "sess_123456"
-
-  /send-invoice:
-    post:
-      summary: Send Invoice & Payment Link
-      description: Create a booking invoice and generate a secure checkout link for upfront payments.
-      operationId: sendInvoice
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - checkIn
-                - checkOut
-                - propertyId
-                - advanceAmount
-                - holdInventory
-                - quoteInfo
-                - lineItems
-                - sessionId
-              properties:
-                checkIn:
-                  type: string
-                  format: date
-                  example: "2026-05-25"
-                checkOut:
-                  type: string
-                  format: date
-                  example: "2026-05-28"
-                propertyId:
-                  type: integer
-                  example: 11184
-                advanceAmount:
-                  type: number
-                  example: 5000
-                advancePercentage:
-                  type: integer
-                  example: 100
-                sessionId:
-                  type: string
-                  description: REQUIRED. The unique conversation ID or chat ID. Must be passed consistently across all API calls to maintain booking state.
-                  example: "chat_78910"
-                holdInventory:
-                  type: object
-                  properties:
-                    enabled:
-                      type: boolean
-                      example: true
-                    value:
-                      type: integer
-                      example: 24
-                    unit:
-                      type: string
-                      example: "HOURS"
-                quoteInfo:
-                  type: object
-                lineItems:
-                  type: array
-                  items:
-                    type: object
-                independent_addons:
-                  type: array
-                  items:
-                    type: object
-      responses:
-        "200":
-          description: Invoice details and payment link
+          description: Invoice sent. Guest will receive payment link via email from Simplotel.
           content:
             application/json:
               schema:
@@ -358,19 +541,22 @@ paths:
                     type: string
                     example: "QMHIFV"
                   invoice_id:
-                    type: integer
-                    example: 12345
-                  payment_link:
                     type: string
-                    example: "https://checkout.simplotel.com/pay/12345"
+                    example: "12345"
                   sessionId:
                     type: string
-                    example: "sess_123456"
+                    example: "chat_abc123"
 
   /send-quote:
     post:
       summary: Send Quote Email
-      description: Send a quote email to the customer with checkout links.
+      description: >
+        Send a price quote to the guest's email. The guest can review and confirm later.
+        Simplotel emails the quote with a checkout link.
+        Tell the guest to check their email for the quote.
+
+        IMPORTANT: room_selection must use room_type_id and rate_plan_id exactly as
+        returned by /availability.
       operationId: sendQuote
       requestBody:
         required: true
@@ -379,28 +565,28 @@ paths:
             schema:
               type: object
               required:
+                - sessionId
                 - check_in_date
                 - check_out_date
                 - room_selection
                 - customer_detail
-                - propertyId
-                - sessionId
               properties:
+                sessionId:
+                  type: string
+                  description: REQUIRED. Same session ID used in /availability.
+                  example: "chat_abc123"
                 check_in_date:
                   type: string
                   format: date
-                  example: "2026-05-25"
+                  example: "2026-06-01"
                 check_out_date:
                   type: string
                   format: date
-                  example: "2026-05-28"
+                  example: "2026-06-05"
                 propertyId:
                   type: integer
+                  default: 11184
                   example: 11184
-                sessionId:
-                  type: string
-                  description: REQUIRED. The unique conversation ID or chat ID. Must be passed consistently across all API calls to maintain booking state.
-                  example: "chat_78910"
                 customer_detail:
                   type: object
                   required:
@@ -420,29 +606,38 @@ paths:
                       example: "+919876543210"
                 room_selection:
                   type: array
+                  description: >
+                    One entry per room. Use room_type_id and rate_plan_id exactly
+                    as returned by /availability.
                   items:
                     type: object
                     required:
-                      - room_type
+                      - room_type_id
                       - rate_plan_id
                       - adults
                       - children
                     properties:
-                      room_type:
-                        type: integer
-                        example: 96056
+                      room_type_id:
+                        description: Exact room_type_id from the chosen /availability option.
+                        example: 118524
                       rate_plan_id:
-                        type: integer
-                        example: 11976
+                        type: string
+                        description: Exact rate_plan_id from the chosen /availability option.
+                        example: "117575"
                       adults:
                         type: integer
                         example: 2
                       children:
                         type: integer
                         example: 0
+                      childAge:
+                        type: array
+                        items:
+                          type: integer
+                        example: []
       responses:
         "200":
-          description: Quote sending confirmation
+          description: Quote sent. Guest will receive quote email from Simplotel.
           content:
             application/json:
               schema:
@@ -459,27 +654,29 @@ paths:
                         example: "PENDING"
                       expiry_time:
                         type: string
-                        example: "2026-05-27T10:20:07Z"
+                        example: "2026-06-03T10:20:07Z"
                   base_booking_url:
                     type: string
                     example: "https://checkout.simplotel.com/quote/NVUPX7"
                   sessionId:
                     type: string
-                    example: "sess_123456"
+                    example: "chat_abc123"
 
   /status/{action}:
     post:
-      summary: Update Status
-      description: Update or modify a booking or quote status (Confirm, Cancel, Edit, Extend).
+      summary: Update Booking Status
+      description: >
+        Confirm, cancel, or extend a booking or quote.
+        Use the booking_id, invoice_id, or quote_id returned from a previous call.
       operationId: updateStatus
       parameters:
         - in: path
           name: action
+          required: true
           schema:
             type: string
             enum: [CONFIRMED, CANCELLED, EXTENDEXPIRY, EDIT]
-          required: true
-          description: Lifecycle action to apply.
+          description: The lifecycle action to apply.
       requestBody:
         required: true
         content:
@@ -491,22 +688,14 @@ paths:
               properties:
                 id:
                   type: string
-                  description: Quote ID or Booking ID to update
-                  example: "NVUPX7"
-                customer_detail:
-                  type: object
-                  properties:
-                    name:
-                      type: string
-                    email:
-                      type: string
-                    phone:
-                      type: string
+                  description: The booking_id, invoice_id, or quote_id to update.
+                  example: "KMDXCM"
                 internal_comments:
                   type: string
-                  example: "Updated via Tawk.to bot"
+                  example: "Cancelled by guest via chat"
                 guest_comments:
                   type: string
+                  example: "Change of plans"
                 extend_hold_duration:
                   type: object
                   properties:
@@ -516,20 +705,12 @@ paths:
                     unit:
                       type: string
                       example: "HOURS"
-                booking:
-                  type: object
-                  properties:
-                    advance_amount:
-                      type: number
-                    booking_status:
-                      type: string
-                      example: "IN_PROGRESS"
                 send_email:
                   type: boolean
                   default: true
       responses:
         "200":
-          description: Status change confirmation details
+          description: Status updated successfully.
           content:
             application/json:
               schema:
