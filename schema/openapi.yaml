@@ -9,7 +9,7 @@ info:
     - Always pass sessionId consistently across ALL calls in the same conversation.
     - Use the sessionId from the first API response and reuse it in every subsequent call.
     - When presenting room options to the guest, always use the option_number from the /availability response.
-    - When calling /book or /send-invoice, pass room_type_id and rate_plan_id exactly as returned by /availability — never invent or guess these values.
+    - CRITICAL: When calling /book or /send-invoice, you MUST pass the real room_type_id (numeric) and rate_plan_id (string/numeric) exactly as returned by /availability. NEVER use placeholders like "room_type_id" or "rate_plan_id" in the final API call.
     - propertyId is always 11184. Never ask the guest for it.
     - Collect guest name, email, and phone before calling /book or /send-invoice.
     - After a successful booking or invoice, tell the guest to check their email for confirmation and payment details.
