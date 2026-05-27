@@ -396,13 +396,11 @@ paths:
                 lineItems:
                   type: array
                   description: >
-                    One entry per room. Use room_type_id and rate_plan_id exactly
-                    as returned by /availability for the option the guest selected.
+                    One entry per room. Use option_number, or room_type_id + rate_plan_id
+                    exactly as returned by /availability.
                   items:
                     type: object
                     required:
-                      - room_type_id
-                      - rate_plan_id
                       - adults
                       - children
                     properties:
@@ -410,15 +408,14 @@ paths:
                         type: integer
                         description: >
                           PREFERRED. The option_number the guest selected from the
-                          /availability response. If provided, the server uses this
-                          to resolve the correct room — more reliable than room_type_id.
-                        example: 4
+                          /availability response (e.g., 3).
+                        example: 3
                       room_type_id:
-                        description: The room_type_id value from the chosen option in /availability. Must be the exact value returned — do not use a placeholder.
+                        description: Exact room_type_id from /availability.
                         example: 118524
                       rate_plan_id:
                         type: string
-                        description: The rate_plan_id value from the chosen option in /availability. Must be the exact value returned — do not use a placeholder.
+                        description: Exact rate_plan_id from /availability.
                         example: "117575"
                       adults:
                         type: integer
@@ -461,13 +458,6 @@ paths:
       description: >
         Create a booking and send a payment invoice to the guest's email.
         Simplotel emails the guest a secure payment link and reservation details.
-        Tell the guest to check their email to complete payment.
-
-        Use advanceAmount = 0 for "Pay at Hotel" (no upfront payment required).
-        Use advanceAmount > 0 to request a deposit or full payment upfront.
-
-        IMPORTANT: lineItems must use room_type_id and rate_plan_id exactly as returned
-        by /availability.
       operationId: sendInvoice
       requestBody:
         required: true
@@ -504,8 +494,6 @@ paths:
                   description: >
                     Amount to collect upfront.
                     For Pay Now (preferred): set to grand_total_all_rooms_incl_taxes.
-                    Room is held for 24 hours. Simplotel emails a secure payment link.
-                    Never set to 0 for non-refundable rates.
                   example: 75510.56
                 holdInventory:
                   type: object
@@ -563,29 +551,24 @@ paths:
                 lineItems:
                   type: array
                   description: >
-                    One entry per room. Use room_type_id and rate_plan_id exactly
-                    as returned by /availability for the option the guest selected.
+                    One entry per room. Use option_number, or room_type_id + rate_plan_id
+                    exactly as returned by /availability.
                   items:
                     type: object
                     required:
-                      - room_type_id
-                      - rate_plan_id
                       - adults
                       - children
                     properties:
                       option_number:
                         type: integer
-                        description: >
-                          PREFERRED. The option_number the guest selected from the
-                          /availability response. If provided, the server uses this
-                          to resolve the correct room — more reliable than room_type_id.
-                        example: 4
+                        description: "PREFERRED. The option number chosen by the guest (e.g., 3)."
+                        example: 3
                       room_type_id:
-                        description: The room_type_id value from the chosen option in /availability. Must be the exact value returned — do not use a placeholder.
+                        description: Real room_type_id from /availability.
                         example: 118524
                       rate_plan_id:
                         type: string
-                        description: The rate_plan_id value from the chosen option in /availability. Must be the exact value returned — do not use a placeholder.
+                        description: Real rate_plan_id from /availability.
                         example: "117575"
                       adults:
                         type: integer
@@ -627,12 +610,7 @@ paths:
     post:
       summary: Send Quote Email
       description: >
-        Send a price quote to the guest's email. The guest can review and confirm later.
-        Simplotel emails the quote with a checkout link.
-        Tell the guest to check their email for the quote.
-
-        IMPORTANT: room_selection must use room_type_id and rate_plan_id exactly as
-        returned by /availability.
+        Send a price quote to the guest's email.
       operationId: sendQuote
       requestBody:
         required: true
@@ -683,29 +661,24 @@ paths:
                 room_selection:
                   type: array
                   description: >
-                    One entry per room. Use room_type_id and rate_plan_id exactly
-                    as returned by /availability.
+                    One entry per room. Use option_number, or room_type_id + rate_plan_id
+                    exactly as returned by /availability.
                   items:
                     type: object
                     required:
-                      - room_type_id
-                      - rate_plan_id
                       - adults
                       - children
                     properties:
                       option_number:
                         type: integer
-                        description: >
-                          PREFERRED. The option_number the guest selected from the
-                          /availability response. If provided, the server uses this
-                          to resolve the correct room — more reliable than room_type_id.
-                        example: 4
+                        description: "PREFERRED. The choice number selected by the guest (e.g., 3)."
+                        example: 3
                       room_type_id:
-                        description: The room_type_id value from the chosen option in /availability. Must be the exact value returned — do not use a placeholder.
+                        description: Exact room_type_id from /availability.
                         example: 118524
                       rate_plan_id:
                         type: string
-                        description: The rate_plan_id value from the chosen option in /availability. Must be the exact value returned — do not use a placeholder.
+                        description: Exact rate_plan_id from /availability.
                         example: "117575"
                       adults:
                         type: integer
