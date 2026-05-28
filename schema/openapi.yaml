@@ -169,6 +169,14 @@ paths:
                     type: integer
                     description: Number of rooms needed for the requested occupancy.
                     example: 2
+                  filters_relaxed:
+                    type: boolean
+                    description: >
+                      If true, it means no rooms matched the specific guest preferences,
+                      so the system returned all available rooms instead.
+                      Tell the guest: "I couldn't find an exact match for your preferences,
+                      but here are the best available options:"
+                    example: false
                   options:
                     type: array
                     description: >
