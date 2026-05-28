@@ -91,6 +91,26 @@ paths:
                   type: string
                   description: Optional promo/discount code entered by the guest.
                   example: "SAVE10"
+                filters:
+                  type: object
+                  description: >
+                    Optional Hard Filters to apply to results. These are post-processed
+                    by the middleware to narrow down options based on guest preference.
+                  properties:
+                    mealPlan:
+                      type: string
+                      enum: [Breakfast, Half Board, Full Board, Room Only]
+                      description: Filter by meal inclusion.
+                    maxPrice:
+                      type: number
+                      description: Filter out options with pricePerNight above this value.
+                    bedType:
+                      type: string
+                      enum: [King, Queen, Twin, Single]
+                      description: Filter by bed configuration.
+                    onlyRefundable:
+                      type: boolean
+                      description: If true, only show flexible/refundable rates.
                 rooms:
                   type: array
                   description: One entry per room being booked with occupancy details.
