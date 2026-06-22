@@ -53,6 +53,10 @@ paths:
         and a `rate_plan_id`. When the guest selects a room, pass the `room_type_id` and
         `rate_plan_id` from the chosen option into the lineItems of /book or /send-invoice.
         Do NOT use option_number as a room identifier in booking calls.
+
+        For follow-up requests such as "more details" or "room description", the API
+        also returns room detail fields like `room_description` and `detail_message`.
+        These fields can be used by the AI assistant to answer guest queries accurately.
       operationId: checkAvailability
       requestBody:
         required: true
@@ -213,6 +217,10 @@ paths:
                           type: string
                           description: Human-readable rate plan name.
                           example: "Room with Breakfast"
+                        room_description:
+                          type: string
+                          description: Detailed room description to help guests understand the offer.
+                          example: "Elegant ocean-view room with king bed, Wi-Fi, and breakfast included."
                         room_type_id:
                           description: >
                             Real Simplotel room type ID. MUST be passed as-is in
@@ -281,6 +289,12 @@ paths:
                           items:
                             type: string
                           example: ["Buffet Breakfast", "Wi-Fi"]
+                        detail_message:
+                          type: string
+                          description: >
+                            Optional pre-formatted room detail text to help Tawk.to answer
+                            follow-up requests for more information about a specific option.
+                          example: "Room: Coral Azure (Room with Breakfast)\nElegant ocean-view room with king bed and breakfast included.\nIncludes: Buffet Breakfast, Wi-Fi\nCancellation: Free cancellation up to 48 hours prior to check-in."
                   independent_addons:
                     type: array
                     description: Optional add-ons available for this property (breakfast, airport transfer, etc.).
