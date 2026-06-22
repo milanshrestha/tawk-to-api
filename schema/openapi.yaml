@@ -221,6 +221,13 @@ paths:
                           type: string
                           description: Detailed room description to help guests understand the offer.
                           example: "Elegant ocean-view room with king bed, Wi-Fi, and breakfast included."
+                        max_occupancy:
+                          type: integer
+                          description: >
+                            Maximum number of guests this room can accommodate.
+                            Use this to understand room capacity and inform guests about room type.
+                            Example: 1 = single, 2 = double, 3 = triple, 4+ = suite/family room.
+                          example: 2
                         room_type_id:
                           description: >
                             Real Simplotel room type ID. MUST be passed as-is in
