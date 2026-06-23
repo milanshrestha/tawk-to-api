@@ -49,14 +49,31 @@ paths:
       summary: Check Room Availability
       description: >
         Retrieve available rooms and rate plans for the requested dates and occupancy.
-        Returns a flat `options[]` array. Each option has an `option_number`, a `room_type_id`,
-        and a `rate_plan_id`. When the guest selects a room, pass the `room_type_id` and
-        `rate_plan_id` from the chosen option into the lineItems of /book or /send-invoice.
-        Do NOT use option_number as a room identifier in booking calls.
+        Returns a flat `options[]` array.
 
-        For follow-up requests such as "more details" or "room description", the API
-        also returns room detail fields like `room_description` and `detail_message`.
-        These fields can be used by the AI assistant to answer guest queries accurately.
+
+        OCCUPANCY RULE: If the guest already stated a room type (single/double/triple/quad),
+        infer the adults count — single=1, double=2, triple=3, quad=4 — and do NOT ask
+        "how many adults/children?". Only ask for dates if not already provided.
+
+
+        DISPLAY FORMAT: After receiving the response, present every option using this exact structure:
+
+        Option [option_number]: [room_name]
+        Rate: [rate_plan_name]
+        Price: [currency][price_per_night_incl_taxes]/night
+        Total: [currency][grand_total_all_rooms_incl_taxes]
+        Refundable: Yes / No
+
+        Then ask: "Which option number would you like to book?"
+
+
+        DETAIL FALLBACK: If guest asks for more details, add "Includes: [inclusions]" and
+        "Cancellation: [cancellation_policy]" to each option.
+
+
+        BOOKING: When the guest selects an option, pass its `option_number`, `room_type_id`,
+        and `rate_plan_id` exactly as returned into lineItems of /send-invoice or /send-quote.
       operationId: checkAvailability
       requestBody:
         required: true
@@ -184,20 +201,8 @@ paths:
                   options:
                     type: array
                     description: >
-                      Flat sequential list of all available options.
-                      
-                      FORMATTING RULE: Present every option using this EXACT multi-line structure:
-                      "Option [option_number]: [room_name]
-                      Rate: [rate_plan_name]
-                      Price: [currency][price_per_night_incl_taxes]/night
-                      Total for [rooms_required] room(s): [currency][grand_total_all_rooms_incl_taxes]"
-
-                      CLARITY FALLBACK: If the guest says "I don't understand" or asks for 
-                      more details, provide the list again but include:
-                      - "Includes: [inclusions]"
-                      - "Cancellation: [cancellation_policy]"
-
-                      After listing all options ask: "Which option number would you like?"
+                      Flat sequential list of all available room options.
+                      Present each using the DISPLAY FORMAT defined in the operation description.
                     items:
                       type: object
                       properties:
