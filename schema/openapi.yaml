@@ -57,23 +57,9 @@ paths:
         "how many adults/children?". Only ask for dates if not already provided.
 
 
-        DISPLAY FORMAT: After receiving the response, present every option using this exact structure:
-
-        Option [option_number]: [room_name]
-        Rate: [rate_plan_name]
-        Price: [currency][price_per_night_incl_taxes]/night
-        Total: [currency][grand_total_all_rooms_incl_taxes]
-        Refundable: Yes / No
-
-        Then ask: "Which option number would you like to book?"
-
-
-        DETAIL FALLBACK: If guest asks for more details, add "Includes: [inclusions]" and
-        "Cancellation: [cancellation_policy]" to each option.
-
-
-        BOOKING: When the guest selects an option, pass its `option_number`, `room_type_id`,
-        and `rate_plan_id` exactly as returned into lineItems of /send-invoice or /send-quote.
+        DISPLAY RULE: The response includes a `message` field containing the pre-formatted
+        room list. Present this `message` text to the guest EXACTLY as returned — do not
+        reformat, summarise, or rewrite it.
       operationId: checkAvailability
       requestBody:
         required: true
@@ -176,6 +162,12 @@ paths:
               schema:
                 type: object
                 properties:
+                  message:
+                    type: string
+                    description: >
+                      Pre-formatted room list ready to send to the guest.
+                      Present this text VERBATIM — do not reformat or rewrite it.
+                    example: "Here are the available rooms:\n\nOption 1: Deluxe Room\nRate: Room Only\nPrice: ₹4,000/night\nTotal: ₹12,000\nRefundable: Yes\n\nWhich option would you like?"
                   sessionId:
                     type: string
                     description: Session ID to reuse in all subsequent calls.
